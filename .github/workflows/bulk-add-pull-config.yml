@@ -13,19 +13,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup gh cli
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
       - name: Install gh & jq
         run: |
-          type -p gh || (curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && apt update && apt install gh -y)
-          apt install -y jq
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          apt update && apt install gh jq -y
 
       - name: Run bulk script
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
-          GH_USER: ${{ shturl.cc/TK }}
+          # =========👉 这里改成你自己的Github用户名！！例如 GH_USER: lisi
+          GH_USER: xj888xj
           DRY_RUN: "true" # true=预览不提交；确认后改成 false
           FILE_PATH: ".github/pull.yml"
           COMMIT_MSG: "feat: add wei/pull sync config"
