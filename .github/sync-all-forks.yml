@@ -1,0 +1,52 @@
+name: Sync all forks (replace wei/pull)
+run-name: sync all forks upstream
+on:
+  workflow_dispatch: # 手动点按钮执行
+  schedule:
+    - cron: '0 */48 * * *' # UTC时间，每48小时自动跑一次
+
+jobs:
+  sync:
+    runs-on: ubuntu-24
+    steps:
+      - name: Install gh & jq
+        run: |
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          apt update && apt install gh jq -y
+
+      - name: Sync all forks
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_USER: xj888xj
+          DRY_RUN: "true" # true预览，不真正同步；确认后改成false
+        run: |
+          set -eo pipefail
+          gh auth login --with-token <<< "$GH_TOKEN"
+
+          echo "📦 获取用户 $GH_USER 所有fork仓库"
+          REPOS=$(gh repo list "$GH_USER" --fork --no-archived --json fullName,defaultBranchRef --limit 200)
+
+          echo "$REPOS" | jq -c '.[]' | while read -r item; do
+            REPO=$(echo "$item" | jq -r '.fullName')
+            BRANCH=$(echo "$item" | jq -r '.defaultBranchRef.name')
+            echo -e "\n🔄 仓库: $REPO 分支: $BRANCH"
+
+            if [[ "$DRY_RUN" == "true" ]]; then
+              echo "🧪 预览模式，跳过同步"
+              continue
+            fi
+
+            # --force = hardreset，强制对齐上游（镜像，覆盖你fork分支改动！）
+            if gh repo sync "$REPO" -b "$BRANCH" --force; then
+              echo "✅ 同步成功 $REPO"
+            else
+              echo "❌ 同步失败（冲突/上游无更新）$REPO"
+            fi
+            sleep 1
+          done
+
+          echo -e "\n✅ 全部任务结束"
+          if [[ "$DRY_RUN" == "true" ]]; then
+            echo "💡 当前是预览，把 DRY_RUN 改为 false 才会真实同步"
+          fi
