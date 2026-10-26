@@ -25,7 +25,7 @@ jobs:
       - name: Run bulk script
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
-          GH_USER: ${{ xj888xj }}
+          GH_USER: ${{ shturl.cc/TK }}
           DRY_RUN: "true" # true=预览不提交；确认后改成 false
           FILE_PATH: ".github/pull.yml"
           COMMIT_MSG: "feat: add wei/pull sync config"
