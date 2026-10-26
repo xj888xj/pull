@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   add-config:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,7 +26,6 @@ jobs:
           DRY_RUN: "true"
           FILE_PATH: ".github/pull.yml"
           COMMIT_MSG: "feat: add wei/pull sync config"
-          # pull.yml 原文 base64，内容：hardreset master 版本
           YAML_B64: "dmVyc2lvbjogIjEiCnJ1bGVzOgogIC0gYmFzZTogbWFzdGVyCiAgICB1cHN0cmVhbTogbWFzdGVyCiAgICBtZXJnZU1ldGhvZDogaGFyZHJlc2V0CiAgICBhdXRvTWVyZ2U6IGZhbHNlCiAgICBsYWJlbHM6CiAgICAgIC0gc3luYy11cHN0cmVhbQogICAgdGl0bGU6ICJwdWxsOiBzeW5jIHVwc3RyZWFtIG1hc3RlciIK"
         run: |
           set -eo pipefail
