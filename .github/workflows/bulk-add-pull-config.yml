@@ -1,5 +1,5 @@
 name: Bulk add wei/pull pull.yml to all forks
-run-name: ${{ shturl.cc/UT }} bulk add pull.yml
+run-name: bulk add pull.yml
 on:
   workflow_dispatch: # ✅ 手动在页面点按钮触发，推荐
 
