@@ -1,7 +1,7 @@
 name: Bulk add wei/pull pull.yml to all forks
 run-name: bulk add pull.yml
 on:
-  workflow_dispatch: # ✅ 手动在页面点按钮触发，推荐
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -22,27 +22,15 @@ jobs:
       - name: Run bulk script
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
-          # =========👉 这里改成你自己的Github用户名！！例如 GH_USER: lisi
           GH_USER: xj888xj
-          DRY_RUN: "true" # true=预览不提交；确认后改成 false
+          DRY_RUN: "true"
           FILE_PATH: ".github/pull.yml"
           COMMIT_MSG: "feat: add wei/pull sync config"
+          # pull.yml 原文 base64，内容：hardreset master 版本
+          YAML_B64: "dmVyc2lvbjogIjEiCnJ1bGVzOgogIC0gYmFzZTogbWFzdGVyCiAgICB1cHN0cmVhbTogbWFzdGVyCiAgICBtZXJnZU1ldGhvZDogaGFyZHJlc2V0CiAgICBhdXRvTWVyZ2U6IGZhbHNlCiAgICBsYWJlbHM6CiAgICAgIC0gc3luYy11cHN0cmVhbQogICAgdGl0bGU6ICJwdWxsOiBzeW5jIHVwc3RyZWFtIG1hc3RlciIK"
         run: |
           set -eo pipefail
           echo "Fetch all forks of user: $GH_USER"
-
-          YAML_CONTENT=$(cat <<'EOF'
-version: "1"
-rules:
-  - base: master
-    upstream: master
-    mergeMethod: hardreset
-    autoMerge: false
-    labels:
-      - sync-upstream
-    title: "pull: sync upstream master"
-EOF
-          )
 
           gh auth login --with-token <<< "$GH_TOKEN"
 
@@ -68,10 +56,9 @@ EOF
               continue
             fi
 
-            B64=$(echo -n "$YAML_CONTENT" | base64 | tr -d '\n')
             gh api -X PUT "repos/$FULL_NAME/contents/$FILE_PATH" \
               -f message="$COMMIT_MSG" \
-              -f content="$B64" \
+              -f content="$YAML_B64" \
               -f branch="$DEF_BRANCH"
             echo "✅ Committed to $FULL_NAME"
           done
