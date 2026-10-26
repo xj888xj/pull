@@ -1,0 +1,84 @@
+name: Bulk add wei/pull pull.yml to all forks
+run-name: ${{ shturl.cc/UT }} bulk add pull.yml
+on:
+  workflow_dispatch: # ✅ 手动在页面点按钮触发，推荐
+
+permissions:
+  contents: read
+
+jobs:
+  add-config:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup gh cli
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: Install gh & jq
+        run: |
+          type -p gh || (curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && apt update && apt install gh -y)
+          apt install -y jq
+
+      - name: Run bulk script
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_USER: ${{ shturl.cc/UT }}
+          DRY_RUN: "true" # true=预览不提交；确认后改成 false
+          FILE_PATH: ".github/pull.yml"
+          COMMIT_MSG: "feat: add wei/pull sync config"
+        run: |
+          set -eo pipefail
+          echo "Fetch all forks of user: $GH_USER"
+
+          YAML_CONTENT=$(cat <<'EOF'
+version: "1"
+rules:
+  - base: master
+    upstream: master
+    mergeMethod: hardreset
+    autoMerge: false
+    labels:
+      - sync-upstream
+    title: "pull: sync upstream master"
+EOF
+          )
+
+          gh auth login --with-token <<< "$GH_TOKEN"
+
+          REPO_LIST=$(gh repo list "$GH_USER" --fork --no-archived --json name,defaultBranchRef,fullName --limit 200)
+
+          echo "$REPO_LIST" | jq -c '.[]' | while read -r repo; do
+            FULL_NAME=$(echo "$repo" | jq -r '.fullName')
+            DEF_BRANCH=$(echo "$repo" | jq -r '.defaultBranchRef.name')
+            echo -e "\n👉 Repo: $FULL_NAME | default branch: $DEF_BRANCH"
+
+            set +e
+            SHA=$(gh api "repos/$FULL_NAME/contents/$FILE_PATH?ref=$DEF_BRANCH" -q '.sha' 2>/dev/null)
+            set -e
+
+            if [[ -n "$SHA" && "$SHA" != "null" ]]; then
+              echo "✅ File exists, skip"
+              continue
+            fi
+
+            echo "📝 Prepare create $FILE_PATH"
+            if [[ "$DRY_RUN" == "true" ]]; then
+              echo "🧪 DRY RUN, skip commit"
+              continue
+            fi
+
+            B64=$(echo -n "$YAML_CONTENT" | base64 | tr -d '\n')
+            gh api -X PUT "repos/$FULL_NAME/contents/$FILE_PATH" \
+              -f message="$COMMIT_MSG" \
+              -f content="$B64" \
+              -f branch="$DEF_BRANCH"
+            echo "✅ Committed to $FULL_NAME"
+          done
+
+          echo -e "\n=== Finished ==="
+          if [[ "$DRY_RUN" == "true" ]]; then
+            echo "💡 This was dry-run, change DRY_RUN to false to apply real changes"
+          fi
